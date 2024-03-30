@@ -2,7 +2,7 @@ const express = require("express");
 const app = express();
 const cors = require("cors");
 const port = process.env.PORT || 5000;
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require("dotenv").config();
 
 //meddleware
@@ -30,19 +30,58 @@ async function run() {
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
 
+    const userCollection = client.db("BistroDB").collection("users");
     const menuCollection = client.db("BistroDB").collection("menu");
-    const reviewsCollection = client.db("BistroDB").collection("review");
+    const reviewCollection = client.db("BistroDB").collection("review");
+    const cartCollection = client.db("BistroDB").collection("carts");
 
+    // Register A New User
+    app.post("/users", async (req, res) => {
+      const userData = req.body;
+      const query = {userEmail: userData.userEmail};
+      const existingEmail = await userCollection.findOne(query);
+      if(existingEmail){
+        return res.send({message: "This Email is Alredy Exist", insertedId: null})
+      }
+      const result = await userCollection.insertOne(userData);
+      res.send(result);
+    })
+
+    // get all food menu from menu collection
     app.get("/menu", async (req, res) => {
       const result = await menuCollection.find().toArray();
       res.send(result);
     })
 
-
+    // get all food reviews from review collection
     app.get("/review", async (req, res) => {
-      const result = await reviewsCollection.find().toArray();
+      const result = await reviewCollection.find().toArray();
       res.send(result);
     })
+
+    // get all food order from carts collection
+    app.get("/carts", async(req, res) => {
+      const email = req.query.email;
+      const query = {email: email};
+      const result = await cartCollection.find(query).toArray();
+      res.send(result);
+    })
+
+    // insert new food order into the cart collection
+    app.post("/carts", async (req, res) => {
+      const cartItem = req.body;
+      const result = await cartCollection.insertOne(cartItem);
+      res.send(result)
+    })
+
+    // delete food order 
+    app.delete("/carts/:id", async (req, res) => {
+      const cartId = req.params.id;
+      const query = {_id: new ObjectId(cartId)};
+      const result = await cartCollection.deleteOne(query);
+      res.send(result)
+    })
+
 
   } finally {
     // Ensures that the client will close when you finish/error
@@ -54,3 +93,15 @@ run().catch(console.dir);
 app.listen(port, () => {
     console.log("Bistro Boss is Setting os", port)
 })
+
+/*
+* ----------------------------
+*     NAMING CONVENTION
+* ----------------------------
+* app.get("/users") 
+* app.get("/users/:id") 
+* app.post("/users") 
+* app.put("/users/:id") 
+* app.patch("/users/:id") 
+* app.delete("/users/:id") 
+*/
