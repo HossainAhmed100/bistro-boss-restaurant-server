@@ -1,6 +1,7 @@
 const express = require("express");
 const app = express();
 const cors = require("cors");
+const jwt = require('jsonwebtoken');
 const port = process.env.PORT || 5000;
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require("dotenv").config();
@@ -35,6 +36,31 @@ async function run() {
     const reviewCollection = client.db("BistroDB").collection("review");
     const cartCollection = client.db("BistroDB").collection("carts");
 
+    // Get All Users
+    app.get("/users", async(req, res) => {
+      const result = await userCollection.find().toArray();
+      res.send(result)
+    })
+
+    // Delete Signle User By Admin Requist
+    app.delete("/users/:id", async(req, res) => {
+      const userId = req.params.id; 
+      const query = {_id: new ObjectId(userId)};
+      const result = await userCollection.deleteOne(query);
+      res.send(result);
+    })
+
+    // Make Admin
+    app.patch("/users/admin/:id", async(req, res) => {
+      const userId = req.params.id;
+      const query = {_id: new ObjectId(userId)};
+      const updateDoc  = {
+        $set: {
+          isAdmin: true
+        }
+      }
+    })
+
     // Register A New User
     app.post("/users", async (req, res) => {
       const userData = req.body;
@@ -47,11 +73,21 @@ async function run() {
       res.send(result);
     })
 
+    
+
     // get all food menu from menu collection
     app.get("/menu", async (req, res) => {
       const result = await menuCollection.find().toArray();
       res.send(result);
     })
+
+    // GET MENU ITEM WITH Quantity
+    app.get('/menuWithQuentity/:quantity', async (req, res) => {
+      const menuQuantity = req.params.quantity;
+      const quantity = parseInt(menuQuantity);
+      const result = await menuCollection.find().limit(quantity).toArray();
+      res.send(result);
+    });
 
     // get all food reviews from review collection
     app.get("/review", async (req, res) => {
