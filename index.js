@@ -36,10 +36,47 @@ async function run() {
     const reviewCollection = client.db("BistroDB").collection("review");
     const cartCollection = client.db("BistroDB").collection("carts");
 
+    app.post("/jwt", async(req, res) => {
+      const user = req.body.userInfo;
+      // console.log("🚀 ~ app.post ~ user:", user)
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN, {expiresIn: "23h"});
+      res.send({token});
+    })
+
+    const verifyToken = (req, res, next) => {
+      console.log("🚀 ~ verifyToken ~ req.headers.authorization:", req.headers.authorization)
+      if(!req.headers.authorization){
+        return res.status(401).send({message: "forbidden access"})
+      }
+      const token = req.headers.authorization.split(' ')[1];
+      jwt.verify(token, process.env.ACCESS_TOKEN, (err, decoded) => {
+        if(err){
+          return res.status(401).send({message: "forbidden access"})
+        }
+        req.decoded = decoded;
+        next()
+      })
+    }
+
     // Get All Users
-    app.get("/users", async(req, res) => {
+    app.get("/users", verifyToken, async(req, res) => {
       const result = await userCollection.find().toArray();
       res.send(result)
+    })
+
+    // check Admin
+    app.get("/users/chckRole/:email", verifyToken, async(req, res) => {
+      const email = req.params.email;
+      if(email === req.decoded.email){
+        return res.status(403).send({message: "Unauthorize Access"});
+      }
+      const query = {email: email};
+      const user = await userCollection.findOne(query);
+      let admin = false;
+      if(user){
+        admin = user?.role === "admin";
+      }
+      res.send({admin})
     })
 
     // Delete Signle User By Admin Requist
@@ -53,12 +90,16 @@ async function run() {
     // Make Admin
     app.patch("/users/admin/:id", async(req, res) => {
       const userId = req.params.id;
+      const isAdmin = req.body.isAdmin;
+
       const query = {_id: new ObjectId(userId)};
       const updateDoc  = {
-        $set: {
-          isAdmin: true
+        $set: { 
+          isAdmin: !isAdmin
         }
       }
+      const result = await userCollection.updateOne(query, updateDoc);
+      res.send(result)
     })
 
     // Register A New User
@@ -67,13 +108,9 @@ async function run() {
       const query = {userEmail: userData.userEmail};
       const existingEmail = await userCollection.findOne(query);
       if(existingEmail){
-        return res.send({message: "This Email is Alredy Exist", insertedId: null})
+        return res.send
       }
-      const result = await userCollection.insertOne(userData);
-      res.send(result);
-    })
-
-    
+    });
 
     // get all food menu from menu collection
     app.get("/menu", async (req, res) => {
