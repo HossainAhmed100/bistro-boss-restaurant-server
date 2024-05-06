@@ -38,20 +38,18 @@ async function run() {
 
     app.post("/jwt", async(req, res) => {
       const user = req.body.userInfo;
-      // console.log("🚀 ~ app.post ~ user:", user)
       const token = jwt.sign(user, process.env.ACCESS_TOKEN, {expiresIn: "23h"});
       res.send({token});
     })
 
     const verifyToken = (req, res, next) => {
-      console.log("🚀 ~ verifyToken ~ req.headers.authorization:", req.headers.authorization)
       if(!req.headers.authorization){
-        return res.status(401).send({message: "forbidden access"})
+        return res.status(401).send({message: "Unauthorize access"})
       }
       const token = req.headers.authorization.split(' ')[1];
       jwt.verify(token, process.env.ACCESS_TOKEN, (err, decoded) => {
         if(err){
-          return res.status(401).send({message: "forbidden access"})
+          return res.status(401).send({message: "Unauthorize access"})
         }
         req.decoded = decoded;
         next()
@@ -65,12 +63,12 @@ async function run() {
     })
 
     // check Admin
-    app.get("/users/chckRole/:email", verifyToken, async(req, res) => {
+    app.get("/users/checkRole/:email", verifyToken, async(req, res) => {
       const email = req.params.email;
-      if(email === req.decoded.email){
-        return res.status(403).send({message: "Unauthorize Access"});
+      if(email !== req.decoded.email){
+        return res.status(403).send({message: "Forbidden Access"});
       }
-      const query = {email: email};
+      const query = {userEmail: email};
       const user = await userCollection.findOne(query);
       let admin = false;
       if(user){
