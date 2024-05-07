@@ -56,8 +56,20 @@ async function run() {
       })
     }
 
+    // use verify admin after verify token
+    const verifyAdmin = async(req, res, next) => {
+      const email = req.decoded.email;
+      const query = {email: email};
+      const user = await userCollection.findOne(query);
+      const isAdmin = user?.role === 'admin';
+      if(isAdmin){
+        return res.status(403).send({message: "forbidden access"})
+      }
+      next()
+    }
+
     // Get All Users
-    app.get("/users", verifyToken, async(req, res) => {
+    app.get("/users", verifyToken, verifyAdmin, async(req, res) => {
       const result = await userCollection.find().toArray();
       res.send(result)
     })
@@ -78,7 +90,7 @@ async function run() {
     })
 
     // Delete Signle User By Admin Requist
-    app.delete("/users/:id", async(req, res) => {
+    app.delete("/users/:id", verifyToken, verifyAdmin, async(req, res) => {
       const userId = req.params.id; 
       const query = {_id: new ObjectId(userId)};
       const result = await userCollection.deleteOne(query);
@@ -86,7 +98,7 @@ async function run() {
     })
 
     // Make Admin
-    app.patch("/users/admin/:id", async(req, res) => {
+    app.patch("/users/admin/:id", verifyToken, verifyAdmin, async(req, res) => {
       const userId = req.params.id;
       const isAdmin = req.body.isAdmin;
 
@@ -114,6 +126,13 @@ async function run() {
     app.get("/menu", async (req, res) => {
       const result = await menuCollection.find().toArray();
       res.send(result);
+    })
+
+    // add new item
+    app.post("/menu", verifyToken, verifyAdmin, async(req, res) => {
+      const item = req.body;
+      const result = await menuCollection.insertOne(item);
+      res.send(result)
     })
 
     // GET MENU ITEM WITH Quantity
