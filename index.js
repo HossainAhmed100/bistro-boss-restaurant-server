@@ -101,7 +101,6 @@ async function run() {
     app.patch("/users/admin/:id", verifyToken, verifyAdmin, async(req, res) => {
       const userId = req.params.id;
       const isAdmin = req.body.isAdmin;
-
       const query = {_id: new ObjectId(userId)};
       const updateDoc  = {
         $set: { 
@@ -128,10 +127,26 @@ async function run() {
       res.send(result);
     })
 
+    // get menu item by ID
+    app.get("/menu/:id", async(req, res) => {
+      const id = req.params.id;
+      const query = {_id: new ObjectId(id)};
+      const result = await menuCollection.findOne(query);
+      res.send(result)
+    })
+
     // add new item
     app.post("/menu", verifyToken, verifyAdmin, async(req, res) => {
       const item = req.body;
       const result = await menuCollection.insertOne(item);
+      res.send(result)
+    })
+
+    // delete menu item
+    app.delete("/menu/:id", async(req, res) => {
+      const id = req.params.id;
+      const query = {_id: new ObjectId(id)};
+      const result = await menuCollection.deleteOne(query);
       res.send(result)
     })
 
@@ -142,6 +157,23 @@ async function run() {
       const result = await menuCollection.find().limit(quantity).toArray();
       res.send(result);
     });
+
+    app.patch("/menu/:id", verifyToken, verifyAdmin, async(req, res) => {
+      const id = req.params.id;
+      const menuItem = req.body.menuItem;
+      const fillter = {_id: new ObjectId(id)};
+      const updateDoc = {
+        $set:{
+          name: menuItem.name,
+          recipe: menuItem.recipe,
+          image: menuItem.image,
+          category: menuItem.category,
+          price: menuItem.price,
+        }
+      }
+      const result = await menuCollection.updateOne(fillter, updateDoc);
+      res.send(result)
+    })
 
     // get all food reviews from review collection
     app.get("/review", async (req, res) => {
